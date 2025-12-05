@@ -35,3 +35,6 @@ CORS_ALLOW_ALL=True
 - JWT com blacklist ativada para logout via refresh token.
 - Permissões de escrita restritas a `SUPERADMIN` e `ADMIN_MUNICIPALITY`; operadores/visualizadores têm leitura.
 - Validações: capacidade de passageiros, conflito de agenda, datas coerentes, CNH não expirada, unicidade de CPF/placa por prefeitura, odômetro atualizado ao concluir viagens.
+
+## Testes
+- Backend (SQLite para evitar configurar Postgres): `USE_SQLITE_FOR_TESTS=True python manage.py test`
