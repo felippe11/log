@@ -6,7 +6,8 @@
 3. Configure `.env` (exemplo em `.env.example`) e exporte as variáveis.
 4. `python manage.py makemigrations && python manage.py migrate`
 5. `python manage.py createsuperuser`
-6. `python manage.py runserver` (usa `municipal_fleet.settings.dev` por padrão)
+6. (Opcional) Popular usuários/municípios de teste: `python manage.py seed_demo_users`
+7. `python manage.py runserver` (usa `municipal_fleet.settings.dev` por padrão)
 
 ### Variáveis de ambiente
 ```
@@ -60,6 +61,13 @@ THROTTLE_LOGIN_RATE=5/min
 - JWT com blacklist ativada para logout via refresh token.
 - Permissões de escrita restritas a `SUPERADMIN` e `ADMIN_MUNICIPALITY`; operadores/visualizadores têm leitura.
 - Validações: capacidade de passageiros, conflito de agenda, datas coerentes, CNH não expirada, unicidade de CPF/placa por prefeitura, odômetro atualizado ao concluir viagens.
+
+## Usuários de teste (comando `seed_demo_users`)
+- `superadmin@example.com` (Super Admin) — senha `pass123`
+- `admin@central.gov` (Admin prefeitura Central) — senha `pass123`
+- `operador@central.gov` / `visualizador@central.gov` — senha `pass123`
+- `admin@interior.gov` (Admin prefeitura Interior) — senha `pass123`
+- `operador@interior.gov` / `visualizador@interior.gov` — senha `pass123`
 
 ## Testes
 - Backend (SQLite para evitar configurar Postgres): `USE_SQLITE_FOR_TESTS=True python manage.py test`
