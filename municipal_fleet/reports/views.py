@@ -2,7 +2,7 @@ from datetime import date
 from django.db.models import Count, Sum, F, ExpressionWrapper, IntegerField
 from django.utils import timezone
 from rest_framework import permissions, response, views
-from fleet.models import Vehicle
+from fleet.models import Vehicle, FuelLog
 from trips.models import Trip, MonthlyOdometer
 
 
@@ -106,8 +106,49 @@ class TripReportView(views.APIView):
                 "departure_datetime",
                 "return_datetime_expected",
                 "passengers_count",
+                "category",
                 "vehicle__license_plate",
                 "driver__name",
             )
         )
         return response.Response({"summary": summary, "trips": trips_data})
+
+
+class FuelReportView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        qs = FuelLog.objects.select_related("vehicle", "driver")
+        if user.role != "SUPERADMIN":
+            qs = qs.filter(municipality=user.municipality)
+        driver_id = request.query_params.get("driver_id")
+        vehicle_id = request.query_params.get("vehicle_id")
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+        if driver_id:
+            qs = qs.filter(driver_id=driver_id)
+        if vehicle_id:
+            qs = qs.filter(vehicle_id=vehicle_id)
+        if start_date:
+            qs = qs.filter(filled_at__gte=start_date)
+        if end_date:
+            qs = qs.filter(filled_at__lte=end_date)
+
+        summary = {
+            "total_logs": qs.count(),
+            "total_liters": qs.aggregate(total=Sum("liters"))["total"] or 0,
+        }
+        logs = list(
+            qs.values(
+                "id",
+                "filled_at",
+                "liters",
+                "fuel_station",
+                "notes",
+                "receipt_image",
+                "vehicle__license_plate",
+                "driver__name",
+            ).order_by("-filled_at", "-id")
+        )
+        return response.Response({"summary": summary, "logs": logs})

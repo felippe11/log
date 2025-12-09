@@ -63,6 +63,7 @@ THROTTLE_LOGIN_RATE=5/min
 - Validações: capacidade de passageiros, conflito de agenda, datas coerentes, CNH não expirada, unicidade de CPF/placa por prefeitura, odômetro atualizado ao concluir viagens.
 
 ## Usuários de teste (comando `seed_demo_users`)
+- Atalho a partir da raiz do projeto: `python seed_demo_users.py` (env `DJANGO_SETTINGS_MODULE` pode sobrepor).
 - `superadmin@example.com` (Super Admin) — senha `pass123`
 - `admin@central.gov` (Admin prefeitura Central) — senha `pass123`
 - `operador@central.gov` / `visualizador@central.gov` — senha `pass123`

@@ -7,6 +7,9 @@ from fleet.models import Vehicle
 from drivers.models import Driver
 
 
+SPECIAL_NEED_CHOICES = {"NONE", "TEA", "ELDERLY", "PCD", "OTHER"}
+
+
 class TripSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
@@ -18,12 +21,58 @@ class TripSerializer(serializers.ModelSerializer):
         user = getattr(request, "user", None)
         vehicle = attrs.get("vehicle", getattr(self.instance, "vehicle", None))
         driver = attrs.get("driver", getattr(self.instance, "driver", None))
+        passengers_details = attrs.get("passengers_details", getattr(self.instance, "passengers_details", []))
         passengers = attrs.get("passengers_count", getattr(self.instance, "passengers_count", 0))
         status = attrs.get("status", getattr(self.instance, "status", Trip.Status.PLANNED))
+        category = attrs.get("category", getattr(self.instance, "category", Trip.Category.PASSENGER))
         departure = attrs.get("departure_datetime", getattr(self.instance, "departure_datetime", None))
         return_expected = attrs.get("return_datetime_expected", getattr(self.instance, "return_datetime_expected", None))
         odometer_start = attrs.get("odometer_start", getattr(self.instance, "odometer_start", None))
         odometer_end = attrs.get("odometer_end", getattr(self.instance, "odometer_end", None))
+        cargo_description = attrs.get("cargo_description", getattr(self.instance, "cargo_description", ""))
+        cargo_size = attrs.get("cargo_size", getattr(self.instance, "cargo_size", ""))
+        cargo_quantity = attrs.get("cargo_quantity", getattr(self.instance, "cargo_quantity", 0))
+        cargo_purpose = attrs.get("cargo_purpose", getattr(self.instance, "cargo_purpose", ""))
+
+        if passengers_details:
+            if not isinstance(passengers_details, list):
+                raise serializers.ValidationError("passengers_details precisa ser uma lista.")
+            cleaned_passengers = []
+            for idx, item in enumerate(passengers_details):
+                if not isinstance(item, dict):
+                    raise serializers.ValidationError(f"Passageiro #{idx + 1} inválido.")
+                name = item.get("name")
+                cpf = item.get("cpf")
+                age = item.get("age")
+                special_need = item.get("special_need") or "NONE"
+                observation = item.get("observation")
+                special_need_other = item.get("special_need_other")
+                if not name:
+                    raise serializers.ValidationError(f"Nome do passageiro #{idx + 1} é obrigatório.")
+                if not cpf:
+                    raise serializers.ValidationError(f"CPF do passageiro #{idx + 1} é obrigatório.")
+                if special_need not in SPECIAL_NEED_CHOICES:
+                    raise serializers.ValidationError(f"Atendimento especial do passageiro #{idx + 1} é inválido.")
+                if special_need == "OTHER" and not special_need_other:
+                    raise serializers.ValidationError(f"Descreva o atendimento especial do passageiro #{idx + 1}.")
+                if age is not None:
+                    try:
+                        age = int(age)
+                    except (ValueError, TypeError):
+                        raise serializers.ValidationError(f"Idade do passageiro #{idx + 1} é inválida.")
+                cleaned_passengers.append(
+                    {
+                        "name": name,
+                        "cpf": cpf,
+                        "age": age,
+                        "special_need": special_need,
+                        "special_need_other": special_need_other,
+                        "observation": observation,
+                    }
+                )
+            passengers = len(cleaned_passengers)
+            attrs["passengers_details"] = cleaned_passengers
+            attrs["passengers_count"] = passengers
 
         if vehicle and vehicle.status == Vehicle.Status.MAINTENANCE:
             raise serializers.ValidationError("Veículo em manutenção não pode receber novas viagens.")
@@ -31,6 +80,23 @@ class TripSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Quantidade de passageiros excede a capacidade do veículo.")
         if vehicle and driver and vehicle.municipality_id != driver.municipality_id:
             raise serializers.ValidationError("Motorista e veículo precisam ser da mesma prefeitura.")
+        if category in (Trip.Category.OBJECT, Trip.Category.MIXED):
+            missing_fields = []
+            if not cargo_description:
+                missing_fields.append("cargo_description")
+            if not cargo_size:
+                missing_fields.append("cargo_size")
+            if not cargo_purpose:
+                missing_fields.append("cargo_purpose")
+            if cargo_quantity is None or cargo_quantity < 1:
+                missing_fields.append("cargo_quantity")
+            if missing_fields:
+                raise serializers.ValidationError(
+                    {field: "Obrigatório quando a categoria envolve objeto." for field in missing_fields}
+                )
+        if category == Trip.Category.OBJECT:
+            attrs["passengers_count"] = 0
+            attrs["passengers_details"] = []
         if user and user.role != "SUPERADMIN":
             if vehicle and vehicle.municipality_id != user.municipality_id:
                 raise serializers.ValidationError("Veículo precisa pertencer à prefeitura do usuário.")

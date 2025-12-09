@@ -14,6 +14,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export const driverPortalApi = axios.create({
+  baseURL: API_URL,
+});
+
+driverPortalApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem("driver_portal_token");
+  if (token) {
+    config.headers["X-Driver-Token"] = token;
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from fleet.models import Vehicle, VehicleMaintenance
+from fleet.models import Vehicle, VehicleMaintenance, FuelLog
 
 
 @admin.register(Vehicle)
@@ -13,3 +13,10 @@ class VehicleAdmin(admin.ModelAdmin):
 class VehicleMaintenanceAdmin(admin.ModelAdmin):
     list_display = ("vehicle", "date", "mileage")
     list_filter = ("date",)
+
+
+@admin.register(FuelLog)
+class FuelLogAdmin(admin.ModelAdmin):
+    list_display = ("vehicle", "driver", "filled_at", "liters", "fuel_station")
+    list_filter = ("filled_at", "fuel_station")
+    search_fields = ("vehicle__license_plate", "driver__name", "fuel_station")

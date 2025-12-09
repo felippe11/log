@@ -3,6 +3,11 @@ from django.utils import timezone
 
 
 class Trip(models.Model):
+    class Category(models.TextChoices):
+        PASSENGER = "PASSENGER", "Passageiro"
+        OBJECT = "OBJECT", "Objeto"
+        MIXED = "MIXED", "Passageiro e Objeto"
+
     class Status(models.TextChoices):
         PLANNED = "PLANNED", "Planejada"
         IN_PROGRESS = "IN_PROGRESS", "Em andamento"
@@ -19,7 +24,13 @@ class Trip(models.Model):
     return_datetime_actual = models.DateTimeField(null=True, blank=True)
     odometer_start = models.PositiveIntegerField()
     odometer_end = models.PositiveIntegerField(null=True, blank=True)
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.PASSENGER)
     passengers_count = models.PositiveIntegerField(default=0)
+    passengers_details = models.JSONField(default=list, blank=True)
+    cargo_description = models.CharField(max_length=255, blank=True)
+    cargo_size = models.CharField(max_length=100, blank=True)
+    cargo_quantity = models.PositiveIntegerField(default=0)
+    cargo_purpose = models.CharField(max_length=255, blank=True)
     stops_description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PLANNED)
     notes = models.TextField(blank=True)

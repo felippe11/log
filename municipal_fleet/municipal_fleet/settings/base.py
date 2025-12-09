@@ -25,6 +25,8 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "drf_spectacular",
+    # Register project-level management commands (e.g., seed_demo_users).
+    "municipal_fleet",
     "accounts.apps.AccountsConfig",
     "tenants.apps.TenantsConfig",
     "fleet.apps.FleetConfig",

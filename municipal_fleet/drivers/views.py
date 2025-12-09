@@ -1,8 +1,11 @@
-from rest_framework import viewsets, permissions, filters
+from rest_framework import viewsets, permissions, filters, views, response, exceptions, parsers, status
 from drivers.models import Driver
 from drivers.serializers import DriverSerializer
 from tenants.mixins import MunicipalityQuerysetMixin
 from accounts.permissions import IsMunicipalityAdminOrReadOnly
+from drivers.portal import generate_portal_token, resolve_portal_token
+from fleet.models import FuelLog
+from fleet.serializers import FuelLogSerializer
 
 
 class DriverViewSet(MunicipalityQuerysetMixin, viewsets.ModelViewSet):
@@ -15,3 +18,99 @@ class DriverViewSet(MunicipalityQuerysetMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         serializer.save(municipality=user.municipality if user.role != "SUPERADMIN" else serializer.validated_data.get("municipality"))
+
+
+class DriverPortalAuthMixin:
+    def get_portal_driver(self, request):
+        token = request.headers.get("X-Driver-Token") or request.query_params.get("driver_token")
+        if not token:
+            raise exceptions.PermissionDenied("Token do motorista não informado.")
+        try:
+            driver = resolve_portal_token(token)
+        except Exception:
+            raise exceptions.PermissionDenied("Token inválido ou expirado.")
+        request.driver_portal = driver
+        return driver
+
+
+class DriverPortalLoginView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        code = request.data.get("code")
+        driver = Driver.objects.filter(access_code=code, status=Driver.Status.ACTIVE).select_related("municipality").first()
+        if not driver:
+            return response.Response({"detail": "Código inválido ou motorista inativo."}, status=status.HTTP_400_BAD_REQUEST)
+        token = generate_portal_token(driver)
+        payload = {
+            "id": driver.id,
+            "name": driver.name,
+            "municipality": driver.municipality_id,
+            "access_code": driver.access_code,
+            "phone": driver.phone,
+        }
+        return response.Response({"token": token, "driver": payload})
+
+
+class DriverPortalTripsView(DriverPortalAuthMixin, views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        driver = self.get_portal_driver(request)
+        trips = (
+            driver.trips.select_related("vehicle")
+            .order_by("-departure_datetime")
+            .values(
+                "id",
+                "origin",
+                "destination",
+                "status",
+                "category",
+                "departure_datetime",
+                "return_datetime_expected",
+                "return_datetime_actual",
+                "passengers_count",
+                "passengers_details",
+                "cargo_description",
+                "cargo_size",
+                "cargo_quantity",
+                "cargo_purpose",
+                "vehicle_id",
+                "vehicle__license_plate",
+            )
+        )
+        return response.Response({"driver": driver.name, "trips": list(trips)})
+
+
+class DriverPortalFuelLogView(DriverPortalAuthMixin, views.APIView):
+    permission_classes = [permissions.AllowAny]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+
+    def get(self, request):
+        driver = self.get_portal_driver(request)
+        logs = (
+            FuelLog.objects.filter(driver=driver)
+            .select_related("vehicle")
+            .order_by("-filled_at", "-created_at")
+            .values(
+                "id",
+                "filled_at",
+                "liters",
+                "fuel_station",
+                "notes",
+                "receipt_image",
+                "vehicle_id",
+                "vehicle__license_plate",
+            )
+        )
+        return response.Response({"logs": list(logs)})
+
+    def post(self, request):
+        driver = self.get_portal_driver(request)
+        serializer = FuelLogSerializer(
+            data=request.data,
+            context={"request": request, "portal_driver": driver},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save(driver=driver, municipality=driver.municipality)
+        return response.Response(serializer.data, status=status.HTTP_201_CREATED)

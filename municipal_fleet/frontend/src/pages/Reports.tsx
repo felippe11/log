@@ -7,6 +7,7 @@ type TripRow = {
   id: number;
   origin: string;
   destination: string;
+  category: string;
   status: string;
   departure_datetime: string;
   return_datetime_expected: string;
@@ -15,16 +16,32 @@ type TripRow = {
   driver__name: string;
 };
 
+type FuelLogRow = {
+  id: number;
+  filled_at: string;
+  liters: number;
+  fuel_station: string;
+  vehicle__license_plate: string;
+  driver__name: string;
+  receipt_image?: string;
+};
+
 export const ReportsPage = () => {
   const [odometer, setOdometer] = useState<OdometerRow[]>([]);
   const [trips, setTrips] = useState<TripRow[]>([]);
   const [summary, setSummary] = useState<any>(null);
+  const [fuelLogs, setFuelLogs] = useState<FuelLogRow[]>([]);
+  const [fuelSummary, setFuelSummary] = useState<any>(null);
 
   useEffect(() => {
     api.get<OdometerRow[]>("/reports/odometer/").then((res) => setOdometer(res.data));
     api.get<{ summary: any; trips: TripRow[] }>("/reports/trips/").then((res) => {
       setSummary(res.data.summary);
       setTrips(res.data.trips);
+    });
+    api.get<{ summary: any; logs: FuelLogRow[] }>("/reports/fuel/").then((res) => {
+      setFuelSummary(res.data.summary);
+      setFuelLogs(res.data.logs);
     });
   }, []);
 
@@ -51,6 +68,7 @@ export const ReportsPage = () => {
           columns={[
             { key: "origin", label: "Origem" },
             { key: "destination", label: "Destino" },
+            { key: "category", label: "Categoria" },
             { key: "status", label: "Status" },
             { key: "departure_datetime", label: "Saída" },
             { key: "return_datetime_expected", label: "Retorno" },
@@ -58,6 +76,25 @@ export const ReportsPage = () => {
             { key: "driver__name", label: "Motorista" },
           ]}
           data={trips}
+        />
+      </div>
+      <div className="card">
+        <h3>Histórico de abastecimentos</h3>
+        {fuelSummary && (
+          <p>
+            Registros: {fuelSummary.total_logs} | Litros: {fuelSummary.total_liters}
+          </p>
+        )}
+        <Table
+          columns={[
+            { key: "filled_at", label: "Data" },
+            { key: "fuel_station", label: "Posto" },
+            { key: "liters", label: "Litros" },
+            { key: "vehicle__license_plate", label: "Veículo" },
+            { key: "driver__name", label: "Motorista" },
+            { key: "receipt_image", label: "Comprovante", render: (row) => (row.receipt_image ? <a href={row.receipt_image}>Ver</a> : "—") },
+          ]}
+          data={fuelLogs}
         />
       </div>
     </div>

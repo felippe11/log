@@ -18,6 +18,7 @@ class TripViewSet(MunicipalityQuerysetMixin, viewsets.ModelViewSet):
         vehicle_id = self.request.query_params.get("vehicle_id")
         driver_id = self.request.query_params.get("driver_id")
         status_param = self.request.query_params.get("status")
+        category = self.request.query_params.get("category")
         start_date = self.request.query_params.get("start_date")
         end_date = self.request.query_params.get("end_date")
         if vehicle_id:
@@ -26,6 +27,8 @@ class TripViewSet(MunicipalityQuerysetMixin, viewsets.ModelViewSet):
             qs = qs.filter(driver_id=driver_id)
         if status_param:
             qs = qs.filter(status=status_param)
+        if category:
+            qs = qs.filter(category=category)
         if start_date:
             qs = qs.filter(departure_datetime__date__gte=start_date)
         if end_date:

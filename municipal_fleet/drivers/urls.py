@@ -1,7 +1,13 @@
 from rest_framework.routers import DefaultRouter
-from drivers.views import DriverViewSet
+from django.urls import path
+from drivers.views import DriverViewSet, DriverPortalLoginView, DriverPortalTripsView, DriverPortalFuelLogView
 
 router = DefaultRouter()
 router.register(r"", DriverViewSet, basename="driver")
 
-urlpatterns = router.urls
+urlpatterns = [
+    path("portal/login/", DriverPortalLoginView.as_view(), name="driver-portal-login"),
+    path("portal/trips/", DriverPortalTripsView.as_view(), name="driver-portal-trips"),
+    path("portal/fuel_logs/", DriverPortalFuelLogView.as_view(), name="driver-portal-fuel-logs"),
+]
+urlpatterns += router.urls

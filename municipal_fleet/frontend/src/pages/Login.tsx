@@ -44,6 +44,9 @@ export const LoginPage = () => {
             {loading ? "Entrando..." : "Entrar"}
           </button>
         </form>
+        <p style={{ marginTop: "0.75rem", color: "var(--muted)", fontSize: "0.95rem" }}>
+          Motorista com código? <a href="/driver-portal">Acesse aqui</a>
+        </p>
       </div>
     </div>
   );
